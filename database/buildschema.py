@@ -13,7 +13,8 @@ def create_relations_account_and_transaction(conn, cur):
         CREATE TABLE "CrossChainPrivacy".Account 
         (
             Address varchar(42) PRIMARY KEY,
-            Balance numeric(64, 32)
+            Balance numeric(64, 32),
+            IsContract bit
         )
         """)
     cur.execute("""

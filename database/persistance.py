@@ -16,8 +16,8 @@ def connect_db():
 def save_account(account: Account):
     global cur
     cur.execute(f"""
-    INSERT INTO "CrossChainPrivacy".account (address, balance)
-    VALUES ('{account.address}', {account.balance})
+    INSERT INTO "CrossChainPrivacy".account (address, balance, iscontract)
+    VALUES ('{account.address}', {account.balance}, CAST({1 if account.is_contract else 0} AS BIT))
     """)
 
 

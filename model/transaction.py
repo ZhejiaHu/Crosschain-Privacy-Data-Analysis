@@ -26,3 +26,9 @@ class Transaction:
         - Gas: {self.gas}
         """
 
+    def __eq__(self, other):
+        return self.txn_hash == other.txn_hash
+
+    def __hash__(self):
+        return hash(self.txn_hash)
+

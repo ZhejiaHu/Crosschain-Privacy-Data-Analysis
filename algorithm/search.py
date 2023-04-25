@@ -10,6 +10,7 @@ def account_transaction_crawler(init_address, max_depth=50, max_width=50):
         account_visited.add(curr_address)
         recent_txns = get_normal_transaction_from_account(curr_address)[:max_width]
         for next_txn in recent_txns:
+            if next_txn in transaction_visited: continue
             receiver_address = next_txn.to_account
             transaction_visited.add(next_txn)
             if receiver_address in account_visited or curr_depth + 1 > max_depth: continue
