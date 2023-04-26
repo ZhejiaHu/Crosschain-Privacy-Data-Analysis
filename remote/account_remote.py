@@ -1,7 +1,7 @@
 from model import Account
 from requests import get
 from .setup import get_handler, to_checksum_address
-from .transactionRemote import parse_transaction_json
+from .transaction_remote import parse_transaction_json
 import util
 
 WEI_TO_ETH = 1e18
