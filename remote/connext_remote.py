@@ -1,6 +1,7 @@
 from model.connext_transfer import ConnextTransfer
 from model.transaction import Transaction
 from requests import get, post
+from threading import Thread
 import util
 
 CHAIN_ID_TO_SUBGRAPH_API = {
@@ -75,6 +76,7 @@ DEST_TXN_GRAPH_QUERY = """
         routers {{
           id
         }}
+        amount
         originSender
         # Executed Transaction
         executedCaller
@@ -97,6 +99,18 @@ DEST_TXN_GRAPH_QUERY = """
     }}
 """
 
+GET_LATEST_TRANSFER_ORIGIN = """
+    query LatestTransfers {
+      originTransfers(first:10) {
+        transferId
+      }
+      
+      destinationTransfers(first:10) {
+        transferId
+      }
+    }
+"""
+
 
 def _query_connext_transfer(transfer_id):
     query_address = util.CONNEXT_TRANSFER_API.format(transfer_id)
@@ -104,26 +118,44 @@ def _query_connext_transfer(transfer_id):
     return transfer_metadata[0]
 
 
-def _query_atom_transaction(transfer_id, chain_id, is_origin):
+def _query_atom_transaction(transfer_id, chain_id, is_origin, result):
     query_template = ORIGIN_TXN_GRAPH_QUERY if is_origin else DEST_TXN_GRAPH_QUERY
     response = post(CHAIN_ID_TO_SUBGRAPH_API[int(chain_id)], "", json={"query": query_template.format(transfer_id)}).json()["data"]
     txn_list = response["originTransfers" if is_origin else "destinationTransfers"]
     if len(txn_list) == 0: print(f"Not valid transaction query with transfer id {transfer_id} on chain id {chain_id} and whether is origin transaction {is_origin}"); return
     txn_metadata = txn_list[0]
-    return Transaction(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"],
+    result[0 if is_origin else 1] = Transaction(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"],
                        1 if txn_metadata["status"] == "XCalled" else 0,
                        txn_metadata["timestamp"] if is_origin else txn_metadata["executedTimestamp"],
                        txn_metadata["delegate"] if is_origin else txn_metadata["executedTxOrigin"],
                        txn_metadata["originSender"] if is_origin else txn_metadata["to"],
                        txn_metadata["chainId"],
                        txn_metadata["blockNumber"] if is_origin else txn_metadata["executedBlockNumber"],
-                       txn_metadata["asset"]["id"],
-                       -1,  # dummy
+                       txn_metadata["bridgedAmt"] if is_origin else txn_metadata["amount"],
+                       -1
                        )
 
 
 def get_atom_transactions_from_transfer(transfer_id):
     metadata = _query_connext_transfer(transfer_id)
     origin_chain_id, dest_chain_id = metadata["origin_chain"], metadata["destination_chain"]
-    origin_txn, dest_txn = _query_atom_transaction(transfer_id, origin_chain_id, True), _query_atom_transaction(transfer_id, dest_chain_id, False)
-    return ConnextTransfer(transfer_id, origin_txn, dest_txn)
+    result_txns = [None, None]
+    origin_query_thread, dest_query_thread = Thread(target=_query_atom_transaction, args=(transfer_id, origin_chain_id, True, result_txns)), Thread(_query_atom_transaction(transfer_id, dest_chain_id, False, result_txns))
+    origin_query_thread.start(), dest_query_thread.start()
+    origin_query_thread.join(), dest_query_thread.join()
+    assert result_txns[0] is not None and result_txns[1] is not None
+    return ConnextTransfer(transfer_id, result_txns[0], result_txns[1])
+
+
+def get_latest_transfers(chain_id):
+    query_address = CHAIN_ID_TO_SUBGRAPH_API[chain_id]
+    response = post(query_address, "", json={"query": GET_LATEST_TRANSFER_ORIGIN}).json()["data"]
+    get_transfer_id = lambda tr: tr["transferId"]
+    origin_transfer_ids, destination_transfer_ids = map(get_transfer_id, response["originTransfers"]), map(get_transfer_id, response["destinationTransfers"])
+    origin_transfers, destination_transfers = map(get_atom_transactions_from_transfer, origin_transfer_ids), map(get_atom_transactions_from_transfer, destination_transfer_ids)
+    return origin_transfers, destination_transfers
+
+
+
+
+

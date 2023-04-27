@@ -10,7 +10,7 @@ BASE_ETHSCAN_URL = "https://api.etherscan.io/api"
 
 # Project Specific Information
 CONNEXT_TRANSFER_API = "https://postgrest.mainnet.connext.ninja/transfers?transfer_id=eq.{}"
-
+CONNEXT_GRAPH_API = "https://gateway.thegraph.com/api/a139ff34a0d410cd9267dc13bace6659/subgraphs/id/DfD1tZSmDtjCGC2LeYEQbVzj9j8kNqKAQEsYL27Vg6Sw"
 
 
 def convert_linux_timestamp(timestamp):
