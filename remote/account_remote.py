@@ -5,21 +5,24 @@ from .transaction_remote import parse_transaction_json
 import util
 
 WEI_TO_ETH = 1e18
-ACCOUNT_URL_TEMPLATE = util.BASE_ETHSCAN_URL + "?module=account&action={}&address={}&tag=latest&apikey={}"
+ACCOUNT_URL_TEMPLATE = "{}?module=account&action={}&address={}&tag=latest&apikey={}"
 NORM_TXN_QUERY = "&startblock=0&endblock=99999999&page=1&offset=10&sort=desc"
 handler = get_handler()
+DUMMY_ACCOUNT = Account("0x0000000000000000000000000000000000000000", 0, False, -1)
 
 
-def get_account_info_from_remote(query_address):
-    query_url = ACCOUNT_URL_TEMPLATE.format("balance", query_address, util.ETHSCAN_API)
-    data = get(query_url).json()
-    return Account(query_address, data["result"], handler.get_code(to_checksum_address(query_address)).hex() != '0x')
+def get_account_info_from_remote(query_address, chain_id):
+    query_url = ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "balance", query_address, util.CHAINSCAN_API[chain_id])
+    response = get(query_url)
+    if response.status_code != 200 or not util.is_valid_data(response.json()): return DUMMY_ACCOUNT
+    data = response.json()
+    return Account(query_address, data["result"], handler.get_code(to_checksum_address(query_address.strip())).hex() != '0x', chain_id)
 
 
-def get_normal_transaction_from_account(query_address, net="Ethereum"):
-    query_url = ACCOUNT_URL_TEMPLATE.format("txlist", query_address, util.ETHSCAN_API) + NORM_TXN_QUERY
-    data = get(query_url).json()
-    if not util.is_valid_data(data): return []
-    normal_txns = []
-    for txn_json in data["result"]: normal_txns.append(parse_transaction_json(txn_json, data["status"], net))
+def get_normal_transaction_from_account(query_address, chain_id):
+    query_url = ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "txlist", query_address, util.CHAINSCAN_API[chain_id]) + NORM_TXN_QUERY
+    response = get(query_url)
+    if response.status_code != 200 or not util.is_valid_data(response.json()): return []
+    data, normal_txns = response.json(), []
+    for txn_json in data["result"]: normal_txns.append(parse_transaction_json(txn_json, data["status"], chain_id))
     return normal_txns

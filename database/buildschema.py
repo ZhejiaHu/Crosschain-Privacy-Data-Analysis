@@ -14,7 +14,8 @@ def create_relations_account_and_transaction(conn, cur):
         (
             Address varchar(42) PRIMARY KEY,
             Balance numeric(64, 32),
-            IsContract bit
+            IsContract bit,
+            CHAIN_ID int
         )
         """)
     cur.execute("""
@@ -25,10 +26,10 @@ def create_relations_account_and_transaction(conn, cur):
             Time_stamp varchar(10),
             From_account varchar(42),
             To_account varchar(42),
-            Net int,
             Block_num int,
             ETH numeric(64, 32),
-            Gas numeric(64, 32)
+            Gas numeric(64, 32),
+            Chain_id int
         )
         """)
     cur.close()

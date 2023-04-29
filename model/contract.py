@@ -5,9 +5,10 @@ from typing import List, Dict
 
 
 class Contract:
-    def __init__(self, contract_address, abi_raw):
+    def __init__(self, contract_address, abi_raw, chain_id):
         self.contract_address: str = contract_address
         self.abi_raw: str = abi_raw
+        self.chain_id = chain_id
         self.constructor: Constructor = None
         self.events: List[Event] = None
         self.functions: List[Function] = None
@@ -17,6 +18,7 @@ class Contract:
         return f"""Contract at address {self.contract_address}:
         
                     {self.constructor}
+                    {self.chain_id}
                     {reduce(lambda prv, cur: prv + str(cur), self.events, "")}
                     {reduce(lambda prv, cur: prv + str(cur), self.functions, "")}
         """

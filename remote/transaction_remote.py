@@ -4,8 +4,8 @@ from .setup import get_handler
 handler = get_handler()
 
 
-def parse_transaction_json(txn_json, status, net):
-    return Transaction(txn_json["hash"], status, txn_json["timeStamp"], txn_json["from"], txn_json["to"], net, txn_json["timeStamp"], txn_json["value"], txn_json["gas"])
+def parse_transaction_json(txn_json, status, chain_id):
+    return Transaction(txn_json["hash"], status, txn_json["timeStamp"], txn_json["from"], txn_json["to"], txn_json["timeStamp"], txn_json["value"], txn_json["gas"], chain_id)
 
 
 def get_transaction_from_transaction_hash(txn_hash):
