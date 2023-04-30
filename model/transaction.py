@@ -2,7 +2,9 @@ import util
 
 
 class Transaction:
-    def __init__(self, txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id):
+    def __init__(self, txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, internal_txns=[]):
+        if internal_txns is None:
+            internal_txns = []
         self.txn_hash = txn_hash
         self.status = status
         self.timestamp = timestamp
@@ -12,6 +14,7 @@ class Transaction:
         self.value = value
         self.gas = gas
         self.chain_id = chain_id
+        self.internal_txns = internal_txns
 
     def __str__(self):
         return f"""Transaction:
@@ -24,6 +27,7 @@ class Transaction:
         - ETH value: {self.value}
         - Gas: {self.gas}
         - Chain Id: {self.chain_id}
+        - Internation transactions: {[str(in_txn)  for in_txn in self.internal_txns]}
         """
 
     def __eq__(self, other):

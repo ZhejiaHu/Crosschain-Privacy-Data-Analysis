@@ -1,6 +1,7 @@
 from algorithm import account_transaction_crawler
 from model.connext_transfer import ConnextTransfer
 from model.transaction import Transaction
+from multiprocessing import Pool
 from requests import get, post
 from threading import Thread
 from typing import List
@@ -172,12 +173,16 @@ def perform_scrawl_from_latest_transfers_chain(main_chain):
     return perform_scrawl_from_transaction_list(txn_on_curr_chain, main_chain)
 
 
+def _perform_scrawl_from_latest_transfer_worker(chain_id):
+    print("Starting web scrawling on chain: {}".format(chain_id))
+    curr_accounts, curr_txns = perform_scrawl_from_latest_transfers_chain(chain_id)
+    for acc in curr_accounts: print(acc)
+    for txn in curr_txns: print(txn)
+
+
 def perform_scrawl_from_latest_transfer():
-    for chain_id in util.SUPPORT_CHAIN_ID:
-        print("Starting web scrawling on chain: {}".format(chain_id))
-        curr_accounts, curr_txns = perform_scrawl_from_latest_transfers_chain(chain_id)
-        for acc in curr_accounts: print(acc)
-        for txn in curr_txns: print(txn)
+    with Pool(5) as p:
+        p.map(_perform_scrawl_from_latest_transfer_worker, util.SUPPORT_CHAIN_ID)
 
 
 

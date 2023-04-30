@@ -5,22 +5,20 @@ from .transaction_remote import parse_transaction_json
 import util
 
 WEI_TO_ETH = 1e18
-ACCOUNT_URL_TEMPLATE = "{}?module=account&action={}&address={}&tag=latest&apikey={}"
-NORM_TXN_QUERY = "&startblock=0&endblock=99999999&page=1&offset=10&sort=desc"
 handler = get_handler()
 DUMMY_ACCOUNT = Account("0x0000000000000000000000000000000000000000", 0, False, -1)
 
 
 def get_account_info_from_remote(query_address, chain_id):
-    query_url = ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "balance", query_address, util.CHAINSCAN_API[chain_id])
+    query_url = util.QUERY_ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "balance", query_address, util.CHAINSCAN_API[chain_id])
     response = get(query_url)
     if response.status_code != 200 or not util.is_valid_data(response.json()): return DUMMY_ACCOUNT
     data = response.json()
     return Account(query_address, data["result"], handler.get_code(to_checksum_address(query_address.strip())).hex() != '0x', chain_id)
 
 
-def get_normal_transaction_from_account(query_address, chain_id):
-    query_url = ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "txlist", query_address, util.CHAINSCAN_API[chain_id]) + NORM_TXN_QUERY
+def get_normal_transaction_from_account(query_address, chain_id, not_internal=True):
+    query_url = util.QUERY_ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "txlist" if not_internal else "txlistinternal", query_address, util.CHAINSCAN_API[chain_id]) + util.QUERY_INFO
     response = get(query_url)
     if response.status_code != 200 or not util.is_valid_data(response.json()): return []
     data, normal_txns = response.json(), []
