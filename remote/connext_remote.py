@@ -160,22 +160,22 @@ def get_latest_transfers(chain_id):
     return origin_transfers, destination_transfers
 
 
-def perform_scrawl_from_transaction_list(txn_list: List[Transaction], chain_id):
+def _perform_scrawl_from_transaction_list(txn_list: List[Transaction], chain_id):
     init_addresses = set(map(lambda txn: txn.from_account, txn_list)) | set(map(lambda txn: txn.to_account, txn_list))
     account_traversed, txn_traversed = account_transaction_crawler(init_addresses, chain_id)
     return account_traversed, txn_traversed
 
 
-def perform_scrawl_from_latest_transfers_chain(main_chain):
+def _perform_scrawl_from_latest_transfers_chain(main_chain):
     origin_transfers, destination_transfers = get_latest_transfers(main_chain)
     txn_as_origin, txn_as_destination = list(map(lambda tr: tr.origin_txn, origin_transfers)), list(map(lambda tr: tr.destination_txn, destination_transfers))
     txn_on_curr_chain = txn_as_origin + txn_as_destination
-    return perform_scrawl_from_transaction_list(txn_on_curr_chain, main_chain)
+    return _perform_scrawl_from_transaction_list(txn_on_curr_chain, main_chain)
 
 
 def _perform_scrawl_from_latest_transfer_worker(chain_id):
     print("Starting web scrawling on chain: {}".format(chain_id))
-    curr_accounts, curr_txns = perform_scrawl_from_latest_transfers_chain(chain_id)
+    curr_accounts, curr_txns = _perform_scrawl_from_latest_transfers_chain(chain_id)
     for acc in curr_accounts: print(acc)
     for txn in curr_txns: print(txn)
 

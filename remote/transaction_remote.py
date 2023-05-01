@@ -1,4 +1,4 @@
-from model import Transaction
+from model import Transaction, Event
 from requests import get
 from .setup import get_handler
 import util
@@ -10,7 +10,9 @@ INTERNAL_TXN_HASH = "OxFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
     internal_txns = []
     if not_internal: internal_txns = get_internal_transaction_from_transaction_hash(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, chain_id)
-    return Transaction(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, status, txn_json["timeStamp"], txn_json["from"], txn_json["to"], txn_json["timeStamp"], txn_json["value"], txn_json["gas"], chain_id, internal_txns)
+    event_emit = None
+    if "methodId" in txn_json.keys() and txn_json["methodId"] != "0x": event_emit = Event(txn_json["hash"], txn_json["to"], txn_json["methodId"], txn_json["input"])
+    return Transaction(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, status, txn_json["timeStamp"], txn_json["from"], txn_json["to"], txn_json["timeStamp"], txn_json["value"], txn_json["gas"], chain_id, internal_txns, event_emit)
 
 
 def get_transaction_from_transaction_hash(txn_hash):

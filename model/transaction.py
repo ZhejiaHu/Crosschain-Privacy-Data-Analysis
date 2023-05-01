@@ -1,8 +1,20 @@
+from typing import List
 import util
 
 
+class Event:
+    def __init__(self, txn_hash, contract_address, method_id, inputs):
+        self.txn_hash = txn_hash
+        self.contract_address = contract_address
+        self.method_id = method_id
+        self.inputs = inputs
+
+    def __str__(self):
+        return f"Event: transaction hash {self.txn_hash} | contract_address {self.contract_address} | method id {self.method_id} | inputs {self.inputs}"
+
+
 class Transaction:
-    def __init__(self, txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, internal_txns=[]):
+    def __init__(self, txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, internal_txns=[], event_emitted: Event=None):
         if internal_txns is None:
             internal_txns = []
         self.txn_hash = txn_hash
@@ -15,6 +27,7 @@ class Transaction:
         self.gas = gas
         self.chain_id = chain_id
         self.internal_txns = internal_txns
+        self.event_emitted = event_emitted
 
     def __str__(self):
         return f"""Transaction:
@@ -28,6 +41,7 @@ class Transaction:
         - Gas: {self.gas}
         - Chain Id: {self.chain_id}
         - Internation transactions: {[str(in_txn)  for in_txn in self.internal_txns]}
+        - Events Emit: {str(self.event_emitted)}
         """
 
     def __eq__(self, other):
@@ -35,4 +49,3 @@ class Transaction:
 
     def __hash__(self):
         return hash((self.txn_hash, self.chain_id))
-
