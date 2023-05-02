@@ -65,7 +65,7 @@ CONNEXT_CONTRACT_ADDRESS = {
 
 QUERY_ACCOUNT_URL_TEMPLATE = "{}?module=account&action={}&address={}&tag=latest&apikey={}"
 QUERY_TXN_URL_TEMPLATE = "{}?module=account&action={}&txhash={}&tag=latest&apikey={}"
-QUERY_INFO = "&startblock=0&endblock=99999999&page=1&offset=10&sort=desc"
+QUERY_INFO = "&startblock={}&endblock={}&page=1&offset=10&sort=desc"
 
 
 def convert_linux_timestamp(timestamp):

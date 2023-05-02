@@ -1,8 +1,9 @@
 from typing import List
+from model import TokenTransfer
 import util
 
 
-class Event:
+class MethodInvocation:
     def __init__(self, txn_hash, contract_address, method_id, inputs):
         self.txn_hash = txn_hash
         self.contract_address = contract_address
@@ -10,11 +11,15 @@ class Event:
         self.inputs = inputs
 
     def __str__(self):
-        return f"Event: transaction hash {self.txn_hash} | contract_address {self.contract_address} | method id {self.method_id} | inputs {self.inputs}"
+        return f"Method invoked: transaction hash {self.txn_hash} | contract_address {self.contract_address} | method id {self.method_id} | inputs {self.inputs}"
 
 
 class Transaction:
-    def __init__(self, txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, internal_txns=[], event_emitted: Event=None):
+    def __init__(self,
+                 txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, block_id,
+                 internal_txns=[],
+                 method_invoked: MethodInvocation=None,
+                 tokens_transferred: List[TokenTransfer]=[]):
         if internal_txns is None:
             internal_txns = []
         self.txn_hash = txn_hash
@@ -26,8 +31,10 @@ class Transaction:
         self.value = value
         self.gas = gas
         self.chain_id = chain_id
+        self.block_id = block_id
         self.internal_txns = internal_txns
-        self.event_emitted = event_emitted
+        self.method_invoked = method_invoked
+        self.tokens_transferred = tokens_transferred
 
     def __str__(self):
         return f"""Transaction:
@@ -40,8 +47,10 @@ class Transaction:
         - ETH value: {self.value}
         - Gas: {self.gas}
         - Chain Id: {self.chain_id}
-        - Internation transactions: {[str(in_txn)  for in_txn in self.internal_txns]}
-        - Events Emit: {str(self.event_emitted)}
+        - Block Id: {self.block_id}
+        - Internation transactions: {[str(in_txn) for in_txn in self.internal_txns]}
+        - Method invocation: {str(self.method_invoked)}
+        - Tokens transferred: {[str(token) for token in self.tokens_transferred]}
         """
 
     def __eq__(self, other):

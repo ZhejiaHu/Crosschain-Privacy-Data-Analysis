@@ -11,7 +11,7 @@ def account_transaction_crawler(init_addresses, chain_id, max_depth=10, max_widt
         recent_txns = get_normal_transaction_from_account(curr_address, chain_id)[:max_width]
         for next_txn in recent_txns:
             if next_txn in transaction_visited: continue
-            receiver_address = next_txn.to_account
+            receiver_address = next_txn.receiver
             transaction_visited.add(next_txn)
             if receiver_address in account_visited or curr_depth + 1 > max_depth: continue
             curr_thread = threading.Thread(target=depth_first_search, args=(receiver_address, curr_depth + 1))
