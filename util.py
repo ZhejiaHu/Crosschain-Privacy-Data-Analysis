@@ -5,7 +5,7 @@ SUPPORT_CHAIN_ID = [1, 10, 56, 100, 137, 42161]
 
 
 # API Information
-INFURA_API = "cd88aac309b94a13b33f1b90874ae28e"
+INFURA_API = "9649e695542243dfb16c5cef91a1ddb1"
 ETHSCAN_API = "AVH9VRH4PNFSGF6V8RXEXDZ19R5RGUMBU9"
 POLYGONSCAN_API = "NPFNK3NCWZM3XPJGFB7AFABR4GDSNNPKDN"
 BSCSCAN_API = "2UCYK12HBHXTNR65ZSU5QFGKHK8QDMAEK4"
@@ -65,7 +65,8 @@ CONNEXT_CONTRACT_ADDRESS = {
 
 QUERY_ACCOUNT_URL_TEMPLATE = "{}?module=account&action={}&address={}&tag=latest&apikey={}"
 QUERY_TXN_URL_TEMPLATE = "{}?module=account&action={}&txhash={}&tag=latest&apikey={}"
-QUERY_INFO = "&startblock={}&endblock={}&page=1&offset=10&sort=desc"
+QUERY_LOG_TEMPLATE = "{}?module=logs&action={}&tag=latest&apikey={}&topic0=0x0000000000000000000000000000000000000000000000000000000000000000"
+QUERY_INFO = "&startblock={}&endblock={}&page=1&offset=1000&sort=desc"
 
 
 def convert_linux_timestamp(timestamp):

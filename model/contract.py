@@ -27,14 +27,6 @@ class Function:
 
         """
 
-
-def get_method_id(fn: Function):
-    name, inputs = fn.name, fn.inputs
-    input_str = reduce(lambda prv, cur: prv + cur + ",", map(lambda prm: prm.type, inputs), "")[:-1]
-    method_sig = f"{name}({input_str})"
-    return "0x" + keccak_256(method_sig.encode("ASCII")).hexdigest()[:8]
-
-
 class Constructor:
     def __init__(self, inputs, state_mutability):
         self.inputs = list(map(map_name_type_tuple, inputs))
@@ -63,13 +55,27 @@ class Event:
         """
 
 
+def get_method_id(fn: Function):
+    name, inputs = fn.name, fn.inputs
+    input_str = reduce(lambda prv, cur: prv + cur + ",", map(lambda prm: prm.type, inputs), "")[:-1]
+    method_sig = f"{name}({input_str})"
+    return "0x" + keccak_256(method_sig.encode("ASCII")).hexdigest()[:8]
+
+
+def get_event_first_topic(event: Event):
+    name, inputs = event.name, event.inputs
+    input_str = reduce(lambda prv, cur: prv + cur + ",", map(lambda prm: prm.type, inputs), "")[:-1]
+    event_sig = f"{name}({input_str})"
+    return "0x" + keccak_256(event_sig.encode("ASCII")).hexdigest()
+
+
 class Contract:
     def __init__(self, contract_address, abi_raw, chain_id):
         self.contract_address: str = contract_address
         self.abi_raw: str = abi_raw
         self.chain_id = chain_id
         self.constructor: Constructor = None
-        self.events: List[Event] = None
+        self.events: Dict[str, Event] = None
         self.functions: Dict[str, Function] = None
         self._parse_abi_raw()
 
@@ -78,7 +84,7 @@ class Contract:
         
                     {self.constructor}
                     {self.chain_id}
-                    {reduce(lambda prv, cur: prv + str(cur), self.events, "")}
+                    {reduce(lambda prv, cur: prv + f"{cur[0]} -> {str(cur[1])}", self.events.items(), "")}
                     {reduce(lambda prv, cur: prv + f"{cur[0]} -> {str(cur[1])}", self.functions.items(), "")}
         """
 
@@ -87,11 +93,11 @@ class Contract:
         constructor_json = next(filter(lambda elem: elem["type"] == "constructor", abi_json))
         self.constructor = Constructor(constructor_json["inputs"], constructor_json["stateMutability"])
         event_jsons = list(filter(lambda elem: elem["type"] == "event", abi_json))
-        self.events = list(map(lambda jsn: Event(jsn["anonymous"], jsn["inputs"], jsn["name"]), event_jsons))
+        events_ = list(map(lambda jsn: Event(jsn["anonymous"], jsn["inputs"], jsn["name"]), event_jsons))
+        self.events = {get_event_first_topic(evt): evt for evt in events_}
         func_jsons = list(filter(lambda elem: elem["type"] == "function", abi_json))
         functions_ = list(map(lambda jsn: Function(jsn["inputs"], jsn["name"], jsn["outputs"], jsn["stateMutability"]), func_jsons))
         self.functions = {get_method_id(fn): fn for fn in functions_}
-
 
 
 

@@ -26,6 +26,7 @@ class TokenTransfer:
                 -- Transaction involved: {self.txn_hash}
                 -- Sender: {self.sender}
                 -- Receiver: {self.receiver}
+                
         """
 
     def __eq__(self, other):
