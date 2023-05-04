@@ -1,6 +1,7 @@
 from model import Transaction, MethodInvocation, TokenTransfer, TokenType, EventLog
 from requests import get
 from remote.setup import get_handler
+from threading import Thread
 import util
 
 handler = get_handler()
@@ -11,19 +12,38 @@ def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
     internal_txns = get_internal_transaction_from_transaction_hash(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, chain_id) if not_internal else []
     method_called = MethodInvocation(txn_json["hash"], txn_json["to"], txn_json["methodId"], txn_json["input"]) if "methodId" in txn_json.keys() and txn_json["methodId"] != "0x" else None
     # tokens = get_token_swap_from_transaction_hash(txn_json["hash"], txn_json["blockNumber"], txn_json["from"], chain_id, TokenType.T20) if not_internal else [] + \
-    events_emitted = get_event_log_from_transaction_hash(txn_json["hash"], txn_json["blockNumber"], chain_id)
-    return Transaction(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, status, txn_json["timeStamp"], txn_json["from"], txn_json["to"], txn_json["timeStamp"], txn_json["value"], txn_json["gas"], chain_id, txn_json["blockNumber"], internal_txns, method_called, events_emitted=events_emitted)
+    events_emitted = get_event_log_from_transaction_hash(txn_json["hash"], chain_id)
+    return Transaction(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, status,
+                       txn_json["timeStamp"],
+                       txn_json["from"],
+                       txn_json["to"],
+                       txn_json["value"],
+                       txn_json["gas"],
+                       chain_id,
+                       txn_json["blockNumber"],
+                       internal_txns=internal_txns,
+                       method_invoked=method_called,
+                       events_emitted=events_emitted)
 
 
-"""
-def get_transaction_from_transaction_hash(txn_hash):
+def get_transaction_from_transaction_hash(txn_hash, chain_id):
+    print(f"Currently getting transaction {txn_hash}.")
     metadata, receipt = handler.get_transaction(txn_hash), handler.get_transaction_receipt(txn_hash)
-    return Transaction(metadata.hash, receipt.status, handler.get_block(metadata.blockNumber).timestamp, metadata["from"], metadata.to, 1, metadata.blockNumber, metadata.value, metadata.gas)  # status is dummy for now
-"""
+    return Transaction(txn_hash,
+                       receipt.status,
+                       handler.get_block(metadata.blockNumber).timestamp,
+                       metadata["from"],
+                       metadata.to,
+                       metadata.blockNumber,
+                       metadata.value,
+                       metadata.gas,
+                       chain_id,
+                       internal_txns=get_internal_transaction_from_transaction_hash(metadata.hash, chain_id),
+                       events_emitted=get_event_log_from_transaction_hash(txn_hash, chain_id))
 
 
 def get_internal_transaction_from_transaction_hash(txn_hash, chain_id):
-    query = util.QUERY_TXN_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "txlistinternal", txn_hash, util.CHAINSCAN_API[chain_id])
+    query = util.QUERY_TXN_URL_TEMPLATE.format(util.CHAINSCAN_URL[int(chain_id)], "txlistinternal", txn_hash, util.CHAINSCAN_API[int(chain_id)])
     response = get(query)
     if response.status_code != 200 or not util.is_valid_data(response.json()): return []
     inter_txns = []
@@ -51,21 +71,13 @@ def get_token_swap_from_transaction_hash(txn_hash, block_num, initial_account, c
     return set(depth_first_search(initial_account))
 
 
-def get_event_log_from_transaction_hash(txn_hash, block_num, chain_id):
-    query = util.QUERY_LOG_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "getLogs", util.CHAINSCAN_API[chain_id]) + util.QUERY_INFO.format(block_num, block_num)
-    print(query)
-    response = get(query)
-    #print(response.json())
-    for tmp in response.json()["result"]: print(tmp)
-    if response.status_code != 200 or not util.is_valid_data(response.json()): return []
-    filter_event_log = lambda jsn: jsn["transactionHash"] == txn_hash
-    map_to_event_log = lambda jsn: EventLog(jsn["logIndex"], jsn["address"], jsn["topics"], jsn["data"], txn_hash, chain_id)
-    return list(map(map_to_event_log, filter(filter_event_log, response.json()["result"])))
+def get_transactions_from_latest_block(chain_id):
+    latest_txn_hashes = handler.get_block(handler.get_block_number())["transactions"][:50]
+    print(len(latest_txn_hashes))
+    return list(map(lambda th: get_transaction_from_transaction_hash(th.hex(), chain_id), latest_txn_hashes))
 
 
-if __name__ == "__main__":
-    tmp = get_event_log_from_transaction_hash(
-        "0xaf6d7956bffa7bc244896925a46a51828660d228261551f8dd799ccf35d03557",
-        17178848,
-        1)
-    for tp in tmp: print(tp)
+def get_event_log_from_transaction_hash(txn_hash, chain_id):
+    logs = handler.get_transaction_receipt(txn_hash).logs
+    return list(map(lambda log: EventLog(log["logIndex"], log["address"], list(map(lambda hx: hx.hex(), log["topics"])), log["data"].hex(), txn_hash, chain_id), logs))
+

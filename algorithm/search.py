@@ -26,6 +26,9 @@ def account_transaction_crawler(init_addresses, chain_id, max_depth=10, max_widt
     return map(lambda acc: get_account_info_from_remote(acc, chain_id), account_visited), transaction_visited
 
 
+def construct_graph_from_latest_block(block_id, chain_id):
+    pass
+
 
 
 

@@ -27,6 +27,7 @@ class Function:
 
         """
 
+
 class Constructor:
     def __init__(self, inputs, state_mutability):
         self.inputs = list(map(map_name_type_tuple, inputs))

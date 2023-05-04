@@ -16,7 +16,7 @@ class MethodInvocation:
 
 class Transaction:
     def __init__(self,
-                 txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id, block_id,
+                 txn_hash, status, timestamp, from_account, to_account, block_num, value, gas, chain_id,
                  internal_txns=[],
                  method_invoked: MethodInvocation=None,
                  tokens_transferred: List[TokenTransfer]=[],
@@ -32,7 +32,6 @@ class Transaction:
         self.value = value
         self.gas = gas
         self.chain_id = chain_id
-        self.block_id = block_id
         self.internal_txns = internal_txns
         self.method_invoked = method_invoked
         self.tokens_transferred = tokens_transferred
@@ -49,7 +48,6 @@ class Transaction:
         - ETH value: {self.value}
         - Gas: {self.gas}
         - Chain Id: {self.chain_id}
-        - Block Id: {self.block_id}
         - Internation transactions: {[str(in_txn) for in_txn in self.internal_txns]}
         - Method invocation: {str(self.method_invoked)}
         - Tokens transferred: {[str(token) for token in self.tokens_transferred]}

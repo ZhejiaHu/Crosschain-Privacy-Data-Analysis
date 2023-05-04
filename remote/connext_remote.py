@@ -2,6 +2,7 @@ from algorithm import account_transaction_crawler
 from model.connext_transfer import ConnextTransfer
 from model.transaction import Transaction
 from multiprocessing import Pool
+from remote import get_internal_transaction_from_transaction_hash, get_event_log_from_transaction_hash
 from requests import get, post
 from threading import Thread
 from typing import List
@@ -135,7 +136,9 @@ def _query_atom_transaction(transfer_id, chain_id, is_origin, result: List[Trans
                        txn_metadata["blockNumber"] if is_origin else txn_metadata["executedBlockNumber"],
                        txn_metadata["bridgedAmt"] if is_origin else txn_metadata["amount"],
                        -1,
-                       int(txn_metadata["chainId"])
+                       int(txn_metadata["chainId"]),
+                       internal_txns=get_internal_transaction_from_transaction_hash(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"], chain_id),
+                       events_emitted=get_event_log_from_transaction_hash(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"], chain_id)
                        )
     if is_origin and result[0].from_account == result[0].to_account: result[0].to_account = util.CONNEXT_CONTRACT_ADDRESS[int(chain_id)]
 
