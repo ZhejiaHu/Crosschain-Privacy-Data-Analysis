@@ -1,5 +1,3 @@
-from model import Event
-from remote import construct_smart_contract_object
 from typing import List
 
 

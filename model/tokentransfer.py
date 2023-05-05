@@ -1,19 +1,20 @@
 from enum import Enum
+from model import EventLog, Contract
 
 TokenType = Enum("TokenType", ["T20", "T721", "T1155"])
 
 
 class TokenTransfer:
     def __init__(self, token_type, token_name, token_symbol, token_decimal, token_id, token_value, txn_hash, sender, receiver):
-        self.token_type = token_type
-        self.token_name = token_name
-        self.token_symbol = token_symbol
-        self.token_decimal = token_decimal
-        self.token_id = token_id
-        self.token_value = token_value
-        self.txn_hash = txn_hash
-        self.sender = sender
-        self.receiver = receiver
+        self.token_type = token_type  # ERC20 or ERC721
+        self.token_name = token_name  # ERC20
+        self.token_symbol = token_symbol  # ERC20
+        self.token_decimal = token_decimal  # ERC20
+        self.token_id = token_id  # ERC721
+        self.token_value = token_value # ERC20
+        self.txn_hash = txn_hash  # ERC20 and ERC721
+        self.sender = sender  # ERC20 and ERC721
+        self.receiver = receiver  # ERC20 and ERC721
 
     def __str__(self):
         return f"""Token Transfer:
@@ -34,7 +35,6 @@ class TokenTransfer:
 
     def __hash__(self):
         return hash((self.txn_hash, self.sender, self.receiver, self.token_id))
-
 
 
 

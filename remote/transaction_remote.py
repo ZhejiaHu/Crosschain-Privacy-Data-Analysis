@@ -1,11 +1,22 @@
 from model import Transaction, MethodInvocation, TokenTransfer, TokenType, EventLog
 from requests import get
 from remote.setup import get_handler
-from threading import Thread
+from remote.contract_remote import construct_smart_contract_object, is_t20_smart_contract_, T20_PROPERTY, invoke_smart_contract_function
+from sha3 import keccak_256
 import util
 
 handler = get_handler()
 INTERNAL_TXN_HASH = "OxFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+
+
+def _get_basic_information_query_template(item): # query item belongs to {name, symbol, decimals}
+    return {
+        "inputs": [],
+        "name": item,
+        "outputs": [{"internalType": "string" if item != "decimals" else "uint8", "name": "", "type": "string" if item != "decimals" else "uint8"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
 
 
 def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
@@ -29,6 +40,8 @@ def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
 def get_transaction_from_transaction_hash(txn_hash, chain_id):
     print(f"Currently getting transaction {txn_hash}.")
     metadata, receipt = handler.get_transaction(txn_hash), handler.get_transaction_receipt(txn_hash)
+    print(metadata)
+    print(receipt)
     return Transaction(txn_hash,
                        receipt.status,
                        handler.get_block(metadata.blockNumber).timestamp,
@@ -81,3 +94,29 @@ def get_event_log_from_transaction_hash(txn_hash, chain_id):
     logs = handler.get_transaction_receipt(txn_hash).logs
     return list(map(lambda log: EventLog(log["logIndex"], log["address"], list(map(lambda hx: hx.hex(), log["topics"])), log["data"].hex(), txn_hash, chain_id), logs))
 
+
+def is_transfer_t20_token_event_log(event_log: EventLog, chain_id):
+    contract_address = event_log.contract_address
+    contract = construct_smart_contract_object(contract_address, chain_id)
+    if not is_t20_smart_contract_(contract): return False
+    print(f"Index {event_log.event_idx} passes basic test.")
+    return event_log.topics[0] == T20_PROPERTY["events"][0]
+
+
+def get_token_transfer_from_transaction_hash_(txn_hash, chain_id=1):
+    target_txn = get_transaction_from_transaction_hash(txn_hash, chain_id)
+    events_emitted = target_txn.events_emitted
+    transfer_t20_events = list(filter(lambda evt: is_transfer_t20_token_event_log(evt, chain_id), events_emitted))
+    return transfer_t20_events
+
+
+def decode_token_transfer_from_event_t20(txn_hash, event_log: EventLog):
+    contract_address, queries_abi = event_log.contract_address, [_get_basic_information_query_template(item) for item in ["name", "symbol", "decimals"]]
+    results = invoke_smart_contract_function(contract_address, queries_abi)
+    return TokenTransfer(TokenType.T20, results[0], results[1], results[2], -1, event_log.data, txn_hash, event_log.topics[1], event_log.topics[2])
+
+
+def get_token_transfer_from_transaction_hash(txn_hash, chain_id=1):
+    target_txn: Transaction = get_transaction_from_transaction_hash(txn_hash, chain_id)
+    token_transfer_event_logs = get_token_transfer_from_transaction_hash_(txn_hash, chain_id)
+    return list(map(lambda pr: decode_token_transfer_from_event_t20(pr[0], pr[1]), zip([target_txn.txn_hash] * len(token_transfer_event_logs), token_transfer_event_logs)))
