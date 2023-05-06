@@ -1,3 +1,5 @@
+import time
+
 from model import Contract
 from requests import get
 from .setup import get_handler, to_checksum_address
@@ -30,7 +32,9 @@ T20_PROPERTY = {
 
 def get_smart_contract_abi_format(contract_address, chain_id):
     query = GET_SMART_CONTRACT_ABI_QUERY.format(contract_address, util.CHAINSCAN_API[chain_id])
-    return get(query).json()["result"]
+    result = get(query).json()["result"]
+    while result == "Max rate limit reached": time.sleep(0.1); result = get(query).json()["result"]
+    return result
 
 
 def construct_smart_contract_object(contract_address, chain_id):
@@ -39,6 +43,7 @@ def construct_smart_contract_object(contract_address, chain_id):
 
 
 def is_t20_smart_contract_(contract: Contract):
+    if contract.functions is None or contract.events is None: return False
     all_funcs_id, all_events_id = contract.functions.keys(), contract.events.keys()
     return all(fn_id in all_funcs_id for fn_id in T20_PROPERTY["functions"]) and all(evt_id in all_events_id for evt_id in T20_PROPERTY["events"])
 
