@@ -9,12 +9,12 @@ handler = get_handler()
 DUMMY_ACCOUNT = Account("0x0000000000000000000000000000000000000000", 0, False, -1)
 
 
-def get_account_info_from_remote(query_address, chain_id):
+async def get_account_info_from_remote(query_address, chain_id):
     query_url = util.QUERY_ACCOUNT_URL_TEMPLATE.format(util.CHAINSCAN_URL[chain_id], "balance", query_address, util.CHAINSCAN_API[chain_id])
     response = get(query_url)
     if response.status_code != 200 or not util.is_valid_data(response.json()): return DUMMY_ACCOUNT
     data = response.json()
-    return Account(query_address, data["result"], handler.get_code(to_checksum_address(query_address.strip())).hex() != '0x', chain_id)
+    return Account(query_address, data["result"], await handler.get_code(to_checksum_address(query_address.strip())).hex() != '0x', chain_id)
 
 
 def get_normal_transaction_from_account(query_address, chain_id, not_internal=True, start_block=0, end_block=99999999):

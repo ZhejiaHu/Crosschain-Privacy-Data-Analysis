@@ -1,5 +1,5 @@
 import time
-
+import aiohttp
 from model import Contract
 from requests import get
 from .setup import get_handler, to_checksum_address
@@ -30,15 +30,18 @@ T20_PROPERTY = {
 }
 
 
-def get_smart_contract_abi_format(contract_address, chain_id):
+async def get_smart_contract_abi_format(contract_address, chain_id):
     query = GET_SMART_CONTRACT_ABI_QUERY.format(contract_address, util.CHAINSCAN_API[chain_id])
-    result = get(query).json()["result"]
+    async with aiohttp.ClientSession() as session:
+        async with session.get(query) as response:
+            result = await response.json()
+    result = result["result"]
     while result == "Max rate limit reached": time.sleep(0.1); result = get(query).json()["result"]
     return result
 
 
-def construct_smart_contract_object(contract_address, chain_id):
-    abi_raw = get_smart_contract_abi_format(contract_address, chain_id)
+async def construct_smart_contract_object(contract_address, chain_id):
+    abi_raw = await get_smart_contract_abi_format(contract_address, chain_id)
     return Contract(contract_address, abi_raw, chain_id)
 
 
@@ -48,11 +51,12 @@ def is_t20_smart_contract_(contract: Contract):
     return all(fn_id in all_funcs_id for fn_id in T20_PROPERTY["functions"]) and all(evt_id in all_events_id for evt_id in T20_PROPERTY["events"])
 
 
-def is_t20_smart_contract(contract_address, chain_id):
-    contract = construct_smart_contract_object(contract_address, chain_id)
+async def is_t20_smart_contract(contract_address, chain_id):
+    contract = await construct_smart_contract_object(contract_address, chain_id)
     return is_t20_smart_contract_(contract)
 
 
-def invoke_smart_contract_function(contract_address, queries_abi: List[Dict[str, Union[str, List, Dict]]]):
+async def invoke_smart_contract_function(contract_address, queries_abi: List[Dict[str, Union[str, List, Dict]]]):
     contract = handler.contract(address=to_checksum_address(contract_address), abi=queries_abi)
-    return list(map(lambda abi: getattr(contract.functions, abi["name"])() .call(), queries_abi))
+    result = list(map(lambda abi: getattr(contract.functions, abi["name"])().call(), queries_abi))
+    return [await cr for cr in result]

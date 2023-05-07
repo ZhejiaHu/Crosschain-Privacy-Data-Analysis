@@ -122,7 +122,7 @@ def _query_connext_transfer(transfer_id):
     return transfer_metadata[0]
 
 
-def _query_atom_transaction(transfer_id, chain_id, is_origin, result: List[Transaction]):
+async def _query_atom_transaction(transfer_id, chain_id, is_origin, result: List[Transaction]):
     query_template = ORIGIN_TXN_GRAPH_QUERY if is_origin else DEST_TXN_GRAPH_QUERY
     response = post(CHAIN_ID_TO_SUBGRAPH_API[int(chain_id)], "", json={"query": query_template.format(transfer_id)}).json()["data"]
     txn_list = response["originTransfers" if is_origin else "destinationTransfers"]
@@ -138,7 +138,7 @@ def _query_atom_transaction(transfer_id, chain_id, is_origin, result: List[Trans
                        -1,
                        int(txn_metadata["chainId"]),
                        internal_txns=get_internal_transaction_from_transaction_hash(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"], chain_id),
-                       events_emitted=get_event_log_from_transaction_hash(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"], chain_id)
+                       events_emitted=await get_event_log_from_transaction_hash(txn_metadata["transactionHash"] if is_origin else txn_metadata["executedTransactionHash"], chain_id)
                        )
     if is_origin and result[0].from_account == result[0].to_account: result[0].to_account = util.CONNEXT_CONTRACT_ADDRESS[int(chain_id)]
 

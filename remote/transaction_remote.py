@@ -1,3 +1,5 @@
+import asyncio
+
 from model import Transaction, MethodInvocation, TokenTransfer, TokenType, EventLog
 from requests import get
 from remote.setup import get_handler
@@ -21,9 +23,8 @@ def _get_basic_information_query_template(item):  # query item belongs to {name,
     }
 
 
-def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
-    internal_txns = get_internal_transaction_from_transaction_hash(
-        txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, chain_id) if not_internal else []
+async def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
+    #internal_txns = get_internal_transaction_from_transaction_hash(txn_json["hash"] if not_internal else INTERNAL_TXN_HASH, chain_id) if not_internal else []
     method_called = MethodInvocation(txn_json["hash"], txn_json["to"], txn_json["methodId"],
                                      txn_json["input"]) if "methodId" in txn_json.keys() and txn_json[
         "methodId"] != "0x" else None
@@ -37,24 +38,24 @@ def parse_transaction_json(txn_json, status, chain_id, not_internal=True):
                        txn_json["gas"],
                        chain_id,
                        txn_json["blockNumber"],
-                       internal_txns=internal_txns,
+                       internal_txns=[],
                        method_invoked=method_called,
-                       events_emitted=events_emitted)
+                       events_emitted=await events_emitted)
 
 
-def get_transaction_from_transaction_hash(txn_hash, chain_id=1):
+async def get_transaction_from_transaction_hash(txn_hash, chain_id=1):
     print(f"Currently getting transaction {txn_hash}.")
-    metadata, receipt = handler.get_transaction(txn_hash), handler.get_transaction_receipt(txn_hash)
+    metadata, receipt = await handler.get_transaction(txn_hash), await handler.get_transaction_receipt(txn_hash)
     return Transaction(txn_hash,
                        receipt.status,
-                       handler.get_block(metadata.blockNumber).timestamp,
+                       (await handler.get_block(metadata.blockNumber)).timestamp,
                        metadata["from"],
                        metadata.to,
                        metadata.blockNumber,
                        metadata.value,
                        metadata.gas,
                        chain_id,
-                       tokens_transferred=get_token_transfer_from_transaction_hash(txn_hash, chain_id))
+                       tokens_transferred=await get_token_transfer_from_transaction_hash(txn_hash, chain_id))
 
 
 def get_internal_transaction_from_transaction_hash(txn_hash, chain_id):
@@ -95,29 +96,34 @@ def get_token_swap_from_transaction_hash(txn_hash, block_num, initial_account, c
     return set(depth_first_search(initial_account))
 
 
-def get_transactions_from_latest_block(chain_id):
-    latest_txn_hashes = handler.get_block(handler.get_block_number())["transactions"][:50]
+async def get_transactions_from_latest_block(chain_id):
+    latest_txn_hashes = await handler.get_block(handler.get_block_number())["transactions"]
+    latest_txn_hashes = latest_txn_hashes[:50]  # would be commented out later
     print(len(latest_txn_hashes))
     return list(map(lambda th: get_transaction_from_transaction_hash(th.hex(), chain_id), latest_txn_hashes))
 
 
-def get_event_log_from_transaction_hash(txn_hash, chain_id):
-    logs = handler.get_transaction_receipt(txn_hash).logs
+async def get_event_log_from_transaction_hash(txn_hash, chain_id):
+    tmp = await handler.get_transaction_receipt(txn_hash)
+    logs = tmp.logs
     return list(map(lambda log: EventLog(log["logIndex"], log["address"], list(map(lambda hx: hx.hex(), log["topics"])),
                                          log["data"].hex(), txn_hash, chain_id), logs))
 
 
-def is_transfer_t20_token_event_log(event_log: EventLog, chain_id):
+async def is_transfer_t20_token_event_log(event_log: EventLog, chain_id):
     contract_address = event_log.contract_address
-    contract = construct_smart_contract_object(contract_address, chain_id)
+    contract = await construct_smart_contract_object(contract_address, chain_id)
     if not is_t20_smart_contract_(contract): return False
     print(f"Index {event_log.event_idx} passes basic test.")
     return event_log.topics[0] == T20_PROPERTY["events"][0]
 
 
-def get_token_transfer_from_transaction_hash_(txn_hash, chain_id=1):
-    events_emitted = get_event_log_from_transaction_hash(txn_hash, chain_id)
-    transfer_t20_events = list(filter(lambda evt: is_transfer_t20_token_event_log(evt, chain_id), events_emitted))
+async def get_token_transfer_from_transaction_hash_(txn_hash, chain_id=1):
+    events_emitted = await get_event_log_from_transaction_hash(txn_hash, chain_id)
+    transfer_t20_events = []
+    for evt in events_emitted:
+        test = await is_transfer_t20_token_event_log(evt, chain_id)
+        if test: transfer_t20_events.append(evt)
     return transfer_t20_events
 
 
@@ -125,10 +131,9 @@ def _parse_account_address_from_topic(topic_repr):
     return "0x" + topic_repr[-40:]
 
 
-def decode_token_transfer_from_event_t20(txn_hash, event_log: EventLog):
-    contract_address, queries_abi = event_log.contract_address, [_get_basic_information_query_template(item) for item in
-                                                                 ["name", "symbol", "decimals"]]
-    results = invoke_smart_contract_function(contract_address, queries_abi)
+async def decode_token_transfer_from_event_t20(txn_hash, event_log: EventLog):
+    contract_address, queries_abi = event_log.contract_address, [_get_basic_information_query_template(item) for item in ["name", "symbol", "decimals"]]
+    results = await invoke_smart_contract_function(contract_address, queries_abi)
     return TokenTransfer(TokenType.T20,
                          results[0],
                          results[1],
@@ -140,13 +145,20 @@ def decode_token_transfer_from_event_t20(txn_hash, event_log: EventLog):
                          _parse_account_address_from_topic(event_log.topics[2]))
 
 
-def get_token_transfer_from_transaction_hash(txn_hash, chain_id=1):
+async def get_token_transfer_from_transaction_hash(txn_hash, chain_id=1):
     # target_txn: Transaction = get_transaction_from_transaction_hash(txn_hash, chain_id)
-    token_transfer_event_logs = get_token_transfer_from_transaction_hash_(txn_hash, chain_id)
-    return list(map(lambda pr: decode_token_transfer_from_event_t20(pr[0], pr[1]),
-                    zip([txn_hash] * len(token_transfer_event_logs), token_transfer_event_logs)))
+    token_transfer_event_logs = await get_token_transfer_from_transaction_hash_(txn_hash, chain_id)
+    result = list(map(lambda pr: decode_token_transfer_from_event_t20(pr[0], pr[1]), zip([txn_hash] * len(token_transfer_event_logs), token_transfer_event_logs)))
+    return [await cr for cr in result]
 
 
-def get_transaction_from_transaction_hash_multi_process(txn_hash, array, idx, chain_id=1):
-    txn = get_transaction_from_transaction_hash(txn_hash, chain_id)
-    array[idx] = txn
+async def get_transaction_from_transaction_hash_multiprocess_async_(txn_hash, chain_id=1):
+    txn = await get_transaction_from_transaction_hash(txn_hash, chain_id)
+    return txn
+
+
+def get_transaction_from_transaction_hash_multiprocess_async(txn_hash, storage, idx, chain_id=1, ):  # pair[0] is the function and pair[1] is the arguments
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(get_transaction_from_transaction_hash_multiprocess_async_(txn_hash, chain_id))
+    storage[idx] = result
+

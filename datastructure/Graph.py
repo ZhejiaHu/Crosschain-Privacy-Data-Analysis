@@ -13,6 +13,7 @@ Edge Type:
 
 def construct_graph_from_transactions(txn_list: List[Transaction]):
     graph = Graph()
+    print(txn_list)
     for txn in txn_list: graph.add_edge_transaction(txn.from_account, txn.to_account, txn)
     return graph
 

@@ -1,9 +1,9 @@
 import web3
 
 from util import INFURA_PROVIDER
-from web3 import Web3, HTTPProvider
+from web3 import AsyncWeb3, AsyncHTTPProvider
 
-handler = Web3(HTTPProvider(INFURA_PROVIDER))
+handler = AsyncWeb3(AsyncHTTPProvider(INFURA_PROVIDER))
 
 
 def get_handler():
