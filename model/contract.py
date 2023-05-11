@@ -99,7 +99,7 @@ class Contract:
         events_ = list(map(lambda jsn: Event(jsn["anonymous"], jsn["inputs"], jsn["name"]), event_jsons))
         self.events = {get_event_first_topic(evt): evt for evt in events_}
         func_jsons = list(filter(lambda elem: elem["type"] == "function", abi_json))
-        functions_ = list(map(lambda jsn: Function(jsn["inputs"], jsn["name"], jsn["outputs"], jsn["stateMutability"]), func_jsons))
+        functions_ = list(map(lambda jsn: Function(jsn["inputs"], jsn["name"], jsn["outputs"], jsn["stateMutability"] if "stateMutability" in jsn.keys() else None), func_jsons))
         self.functions = {get_method_id(fn): fn for fn in functions_}
 
 
